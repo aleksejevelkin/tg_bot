@@ -1,31 +1,21 @@
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command, StateFilter
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 import asyncio
 import signal
 import sys
-import config
+from config import Config
 from weather import WeatherService
+from keyboard_manager import KeyboardManager
 
 class UserState(StatesGroup):
     waiting_for_city = State()
 
-class KeyboardManager:
-    @staticmethod
-    def get_main_keyboard():
-        buttons = [
-            [KeyboardButton(text="Погода сегодня")],
-            [KeyboardButton(text="Погода завтра")],
-            [KeyboardButton(text="⚙️ Настройки")]
-        ]
-        return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
-
 class WeatherBot:
     def __init__(self):
-        self.bot = Bot(token=config.BOT_TOKEN)
+        self.bot = Bot(token=Config.BOT_TOKEN)
         self.storage = MemoryStorage()
         self.dp = Dispatcher(storage=self.storage)
         self.weather_service = WeatherService()
@@ -37,10 +27,7 @@ class WeatherBot:
         self.dp.message.register(self.send_welcome, Command('start'))
         self.dp.message.register(self.settings_handler, F.text == "⚙️ Настройки")
         self.dp.message.register(self.process_city, StateFilter(UserState.waiting_for_city))
-        self.dp.message.register(
-            self.handle_weather,
-            F.text.in_(["Погода сегодня", "Погода завтра"])
-        )
+        self.dp.message.register(self.handle_weather, F.text.in_(["Погода сегодня", "Погода завтра"]))
 
     async def _close(self):
         """Закрытие всех соединений"""
@@ -69,20 +56,20 @@ class WeatherBot:
 
     async def send_welcome(self, message: types.Message, state: FSMContext):
         await state.set_data({
-            'city': config.DEFAULT_CITY,
-            'lat': config.DEFAULT_LATITUDE,
-            'lon': config.DEFAULT_LONGITUDE
+            'city': Config.DEFAULT_CITY,
+            'lat': Config.DEFAULT_LATITUDE,
+            'lon': Config.DEFAULT_LONGITUDE
         })
         
         await message.reply(
             "Привет! Я помогу тебе узнать погоду и подскажу, как одеться.\n"
-            f"Сейчас установлен город: {config.DEFAULT_CITY}",
+            f"Сейчас установлен город: {Config.DEFAULT_CITY}",
             reply_markup=self.keyboard_manager.get_main_keyboard()
         )
 
     async def settings_handler(self, message: types.Message, state: FSMContext):
         user_data = await state.get_data()
-        current_city = user_data.get('city', config.DEFAULT_CITY)
+        current_city = user_data.get('city', Config.DEFAULT_CITY)
         
         await message.reply(
             f"Текущий город: {current_city}\n"
@@ -118,14 +105,14 @@ class WeatherBot:
         
         weather_data = await self.weather_service.get_weather(
             is_today,
-            lat=user_data.get('lat', config.DEFAULT_LATITUDE),
-            lon=user_data.get('lon', config.DEFAULT_LONGITUDE)
+            lat=user_data.get('lat', Config.DEFAULT_LATITUDE),
+            lon=user_data.get('lon', Config.DEFAULT_LONGITUDE)
         )
         
         if weather_data:
             recommendation = self.weather_service.get_clothes_recommendation(weather_data)
             response = (
-                f"{'Сегодня' if is_today else 'Завтра'} в {user_data.get('city', config.DEFAULT_CITY)}:\n"
+                f"{'Сегодня' if is_today else 'Завтра'} в {user_data.get('city', Config.DEFAULT_CITY)}:\n"
                 f"Температура: {weather_data['temp']}°C\n"
                 f"Ощущается как: {weather_data['feels_like']}°C\n"
                 f"Состояние: {weather_data['condition']}\n\n"

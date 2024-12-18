@@ -1,5 +1,5 @@
 import aiohttp
-import config
+from config import Config
 from datetime import datetime
 import ssl
 
@@ -19,11 +19,11 @@ class WeatherService:
         params = {
             'q': city_name,
             'limit': 1,
-            'appid': config.OPENWEATHER_API_KEY
+            'appid': Config.OPENWEATHER_API_KEY
         }
         
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=self.ssl_context)) as session:
-            async with session.get(config.GEOCODING_URL, params=params) as response:
+            async with session.get(Config.GEOCODING_URL, params=params) as response:
                 if response.status == 200:
                     data = await response.json()
                     if data:
@@ -37,14 +37,14 @@ class WeatherService:
     async def get_weather(self, is_today=True, lat=None, lon=None):
         """Получение погоды по координатам"""
         params = {
-            'lat': lat or config.DEFAULT_LATITUDE,
-            'lon': lon or config.DEFAULT_LONGITUDE,
-            'appid': config.OPENWEATHER_API_KEY,
+            'lat': lat or Config.DEFAULT_LATITUDE,
+            'lon': lon or Config.DEFAULT_LONGITUDE,
+            'appid': Config.OPENWEATHER_API_KEY,
             'units': 'metric',
             'lang': 'ru'
         }
         
-        url = f"{config.OPENWEATHER_URL}/{'weather' if is_today else 'forecast'}"
+        url = f"{Config.OPENWEATHER_URL}/{'weather' if is_today else 'forecast'}"
         
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=self.ssl_context)) as session:
             async with session.get(url, params=params) as response:
